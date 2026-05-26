@@ -28,9 +28,10 @@ def fuzz(
     stats = {"iterations": iterations, "triggered": 0}
     run_dir = workdir / "runs"
     run_dir.mkdir(parents=True, exist_ok=True)
+    corpus = _init_corpus(seeds, config)
 
     for iteration in range(iterations):
-        base = rng.choice(seeds)
+        base = _select_seed(corpus, rng)
         mutated = mutate(base, config, rng)
         iteration_dir = run_dir / f"iter_{iteration:04d}"
         simulation_result = run_simulation(mutated, sim_cmd, timeout, iteration_dir)
@@ -55,8 +56,11 @@ def fuzz(
             else:
                 entry["testcase"] = mutated.to_dict()
             findings.append(entry)
+        if _should_add_to_corpus(detail, triggered, config):
+            _add_to_corpus(corpus, mutated, detail.get("score", 0.0), config)
         _write_iteration(iteration_dir, mutated, entry)
 
+    stats["corpus_size"] = len(corpus)
     report = {"stats": stats, "findings": findings}
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as handle:
@@ -68,3 +72,46 @@ def _write_iteration(path: Path, testcase: TestCase, entry: Dict[str, Any]) -> N
     testcase.save(path / "testcase.json")
     with (path / "result.json").open("w", encoding="utf-8") as handle:
         json.dump(entry, handle, indent=2)
+
+
+def _init_corpus(seeds: List[TestCase], config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    corpus: List[Dict[str, Any]] = []
+    for seed in seeds:
+        score = _heuristic_score(seed, config)
+        corpus.append({"testcase": seed, "score": score})
+    return corpus
+
+
+def _heuristic_score(testcase: TestCase, config: Dict[str, Any]) -> float:
+    _, detail = evaluate(testcase, {"metrics": {}}, config)
+    return float(detail.get("score", 0.0))
+
+
+def _select_seed(corpus: List[Dict[str, Any]], rng: random.Random) -> TestCase:
+    if not corpus:
+        raise ValueError("Empty fuzzing corpus")
+    return rng.choice(corpus)["testcase"]
+
+
+def _should_add_to_corpus(
+    detail: Dict[str, Any], triggered: bool, config: Dict[str, Any]
+) -> bool:
+    fuzzing_cfg = config.get("fuzzing", {})
+    if triggered and fuzzing_cfg.get("keep_triggered", True):
+        return True
+    score_threshold = float(fuzzing_cfg.get("score_threshold", 0.0))
+    return float(detail.get("score", 0.0)) >= score_threshold
+
+
+def _add_to_corpus(
+    corpus: List[Dict[str, Any]],
+    testcase: TestCase,
+    score: float,
+    config: Dict[str, Any],
+) -> None:
+    corpus.append({"testcase": testcase, "score": score})
+    fuzzing_cfg = config.get("fuzzing", {})
+    max_size = int(fuzzing_cfg.get("corpus_max_size", 50))
+    if max_size > 0 and len(corpus) > max_size:
+        corpus.sort(key=lambda entry: entry["score"], reverse=True)
+        del corpus[max_size:]
