@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Tuple
 
+from clsr_fuzz.instruction_stats import count_instruction_types
 from clsr_fuzz.testcase import TestCase
 
 
@@ -32,10 +33,11 @@ def _coerce_metrics(metrics: Dict[str, Any], testcase: TestCase, config: Dict[st
     if metrics:
         return metrics
 
-    load_count = sum(1 for instr in testcase.instructions if instr.startswith("lw"))
-    store_count = sum(1 for instr in testcase.instructions if instr.startswith("sw"))
-    mul_count = sum(1 for instr in testcase.instructions if instr.startswith("mul"))
-    fence_count = sum(1 for instr in testcase.instructions if instr in {"fence", "nop"})
+    counts = count_instruction_types(testcase.instructions)
+    load_count = counts["load"]
+    store_count = counts["store"]
+    mul_count = counts["mul"]
+    fence_count = counts["fence"] + counts["nop"]
 
     limits = config.get("limits", {})
     mshr_limit = limits.get("mshr_entries", 16)
