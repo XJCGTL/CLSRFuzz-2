@@ -1,0 +1,31 @@
+{
+  "strategies": {
+    "load_storm": {
+      "load_count": 64,
+      "stride": 4096,
+      "loop_depth": 1
+    },
+    "mul_chain": {
+      "mul_chain_len": 256,
+      "loop_depth": 1
+    },
+    "mixed": {
+      "load_count": 32,
+      "stride": 4096,
+      "mul_chain_len": 128,
+      "loop_depth": 1,
+      "delay_nops": 2
+    }
+  },
+  "thresholds": {
+    "rob_full_cycles": 40,
+    "mshr_occupancy": 6,
+    "lsq_occupancy": 6,
+    "stall_cycles": 80
+  },
+  "limits": {
+    "rob_entries": 64,
+    "mshr_entries": 16,
+    "lsq_entries": 16
+  }
+}

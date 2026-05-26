@@ -3,6 +3,35 @@
 
 容量受限型共享资源指CPU微架构中具有固定容量、可被多个硬件请求竞争使用的结构，例如重排序缓冲区（ROB）、发射队列（Issue Queue）/预留站（RS）、加载/存储队列（LSQ）以及L1数据缓存的MSHR、写缓冲区、Branch Target Buffer（BTB）、Return Stack（RSB）等【30†L125-L133】。这些结构一旦被占满，就会出现阻塞和延迟，可被构造成旁路信道泄露秘密。本报告提出了针对RISC-V开源核（如BOOM、Rocket、Ariane/CVA6）的通用Fuzz方案。我们首先描述如何**静态识别**RTL代码中的容量受限结构（通过查找FIFO/计数器、head/tail指针、valid/ready信号等模式），并比较不同核的实现差异；接着说明如何在仿真中**构造阻塞场景**（通过驱动信号或延时内存响应使结构填满），并给出仿真注入示例；然后提出单线程下的**激励生成策略**（通过长依赖链、跨页访问、大量Load指令等触发竞争），并给出伪代码与参数设置；然后构建模块化**Fuzz框架**（Mermaid流程图），定义输入格式、变异器、评估器和归因方法；随后说明如何将这些竞争场景与瞬态执行漏洞链路结合，在模拟中同步注入竞争信号实现侧信道，给出攻击流程和示例代码；最后规划了实验验证计划（平台、度量、统计方法）和一个甘特时间线，并讨论误判与跨架构局限，提出硬件/软件缓解思路。报告中含有表格（比较不同核的模块与信号、关键参数取值）、伪代码、Mermaid流程图与甘特图，并在每个主要部分末尾列出可操作的后续工作清单，使方案可直接用于实现静态分析脚本、仿真激励脚本和Fuzz框架原型【30†L125-L133】【44†L23-L26】。
 
+## 工具实现（原型）
+
+本仓库已实现一个可运行的CLS RFuzz原型工具，覆盖文档方案中的**静态识别、激励生成、变异、评估、最小化**等模块。工具以Python标准库实现，可直接运行：
+
+```bash
+# 1) 静态扫描RTL
+python -m clsr_fuzz scan --rtl-dir /path/to/rtl --out scan_results.json
+
+# 2) 生成种子
+python -m clsr_fuzz generate --config examples/config.json --strategy all --count 2 --out-dir seeds
+
+# 3) 运行Fuzz（使用示例仿真器）
+python -m clsr_fuzz fuzz \
+  --seeds seeds \
+  --sim-cmd "python examples/sim_stub.py --testcase {testcase} --out {out}" \
+  --out findings.json \
+  --workdir fuzz_runs \
+  --config examples/config.json \
+  --minimize
+
+# 4) 最小化单个测试用例
+python -m clsr_fuzz minimize \
+  --testcase examples/seed.json \
+  --sim-cmd "python examples/sim_stub.py --testcase {testcase} --out {out}" \
+  --out minimized.json
+```
+
+测试用例采用JSON格式，字段包括`instructions`、`memory_map`、`params`与`metadata`。`--sim-cmd`支持`{testcase}`和`{out}`占位符，便于接入实际RTL仿真器输出指标。
+
 ## 一、静态识别容量受限资源结构
 
 在RTL中，容量受限结构通常以**FIFO/数组**形式存在，并带有**entry计数器、head/tail指针、valid/ready/alloc/free信号**、仲裁逻辑等特征。例如，BOOM中Reorder Buffer采用循环缓冲结构，有`rob_head`/`rob_tail`指针、每项`busy`位等【49†L83-L91】；Issue Queue（预留站）模块有可分配字段和issue信号；LSQ有独立的LoadQueue和StoreQueue；L1数据缓存模块含有限数量的MSHR和line buffer；Branch Predictor模块带BTB条目和返回堆栈指针；数据缓存有WriteBuffer等。我们可以通过**AST匹配或正则搜索**查找关键词（如`headPtr`、`tailPtr`、`alloc`、`busy`、`valid`、`counter`等），并结合流水阶段信号（issue/commit）定位对应模块。以下示例伪代码演示可能的搜索流程：  

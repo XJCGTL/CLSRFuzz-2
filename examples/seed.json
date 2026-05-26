@@ -1,0 +1,25 @@
+{
+  "instructions": [
+    "lw x12, 0(x10)",
+    "lw x12, 4096(x10)",
+    "lw x12, 8192(x10)",
+    "mul x5, x5, x6",
+    "mul x5, x5, x6",
+    "nop"
+  ],
+  "memory_map": {
+    "base": "0x80000000",
+    "size": 1048576,
+    "stride": 4096
+  },
+  "params": {
+    "load_count": 3,
+    "stride": 4096,
+    "mul_chain_len": 2,
+    "delay_nops": 1
+  },
+  "metadata": {
+    "strategy": "mixed",
+    "seed": 1234
+  }
+}
