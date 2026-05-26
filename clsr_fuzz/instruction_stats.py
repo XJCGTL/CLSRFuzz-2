@@ -37,9 +37,19 @@ def estimate_metrics(
     mul_count = counts["mul"]
     fence_count = counts["fence"] + counts["nop"]
 
-    mshr_occupancy = min(mshr_limit, (load_count // 4) + (store_count // 8))
-    lsq_occupancy = min(lsq_limit, (load_count + store_count) // 4)
-    rob_full_cycles = min(rob_limit, (mul_count // 8) + (fence_count // 16))
+    mshr_load_divisor = 4
+    mshr_store_divisor = 8
+    lsq_divisor = 4
+    rob_mul_divisor = 8
+    rob_fence_divisor = 16
+
+    mshr_occupancy = min(
+        mshr_limit, (load_count // mshr_load_divisor) + (store_count // mshr_store_divisor)
+    )
+    lsq_occupancy = min(lsq_limit, (load_count + store_count) // lsq_divisor)
+    rob_full_cycles = min(
+        rob_limit, (mul_count // rob_mul_divisor) + (fence_count // rob_fence_divisor)
+    )
     stall_cycles = (load_count + store_count + mul_count) // 2
 
     return {

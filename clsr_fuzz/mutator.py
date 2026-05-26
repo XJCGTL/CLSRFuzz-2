@@ -97,7 +97,7 @@ def _rename_register(instructions: List[str], rng: random.Random) -> None:
         return
     index = rng.randrange(len(instructions))
     instruction = instructions[index]
-    registers = [reg for reg in REG_PATTERN.findall(instruction) if reg != "x0"]
+    registers = [reg for reg in REG_PATTERN.findall(instruction) if reg in REGISTER_POOL]
     if not registers:
         return
     old = rng.choice(registers)
