@@ -30,7 +30,7 @@ python -m clsr_fuzz minimize \
   --out minimized.json
 ```
 
-测试用例采用JSON格式，字段包括`instructions`、`memory_map`、`params`与`metadata`。`--sim-cmd`支持`{testcase}`和`{out}`占位符，便于接入实际RTL仿真器输出指标。
+测试用例采用JSON格式，字段包括`instructions`、`memory_map`、`params`与`metadata`。`--sim-cmd`支持`{testcase}`和`{out}`占位符，便于接入实际RTL仿真器输出指标。配置文件中的`mutation`可启用寄存器重命名与分支/跳转偏移变异，`fuzzing`可设置语料库大小与得分阈值，用于保留高价值用例。
 
 ## 一、静态识别容量受限资源结构
 
