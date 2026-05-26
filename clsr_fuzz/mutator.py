@@ -7,6 +7,13 @@ from typing import Any, Dict, List
 from clsr_fuzz.testcase import TestCase
 
 LOAD_OFFSET_PATTERN = re.compile(r"(l[wd])\s+(x\d+),\s*([+-]?\d+)\((x\d+)\)")
+REG_PATTERN = re.compile(r"\bx(?:[0-9]|[12][0-9]|3[01])\b")
+BRANCH_PATTERN = re.compile(
+    r"\b(b(?:eq|ne|lt|ge|ltu|geu))\s+(x\d+),\s*(x\d+),\s*([+-]?\d+)\b"
+)
+JAL_PATTERN = re.compile(r"\bjal\s+(x\d+),\s*([+-]?\d+)\b")
+JALR_PATTERN = re.compile(r"\bjalr\s+(x\d+),\s*([+-]?\d+)\((x\d+)\)\b")
+REGISTER_POOL = [f"x{i}" for i in range(1, 32)]
 
 
 def mutate(testcase: TestCase, config: Dict[str, Any], rng: random.Random) -> TestCase:
@@ -20,9 +27,13 @@ def mutate(testcase: TestCase, config: Dict[str, Any], rng: random.Random) -> Te
     if rng.random() < mutation_cfg.get("replace_prob", 0.2):
         _replace_instruction(instructions, config, rng)
     if rng.random() < mutation_cfg.get("offset_mutate_prob", 0.2):
-        _mutate_load_offset(instructions, rng)
+        _mutate_load_offset(instructions, rng, mutation_cfg)
     if rng.random() < mutation_cfg.get("delay_prob", 0.2):
         _insert_delay(instructions, rng)
+    if rng.random() < mutation_cfg.get("rename_prob", 0.15):
+        _rename_register(instructions, rng)
+    if rng.random() < mutation_cfg.get("branch_offset_mutate_prob", 0.15):
+        _mutate_branch_offset(instructions, rng, mutation_cfg)
 
     max_instructions = int(mutation_cfg.get("max_instructions", 256))
     if len(instructions) > max_instructions:
@@ -59,7 +70,9 @@ def _replace_instruction(instructions: List[str], config: Dict[str, Any], rng: r
     instructions[index] = rng.choice(pool)
 
 
-def _mutate_load_offset(instructions: List[str], rng: random.Random) -> None:
+def _mutate_load_offset(
+    instructions: List[str], rng: random.Random, mutation_cfg: Dict[str, Any]
+) -> None:
     if not instructions:
         return
     index = rng.randrange(len(instructions))
@@ -67,10 +80,57 @@ def _mutate_load_offset(instructions: List[str], rng: random.Random) -> None:
     if not match:
         return
     opcode, dst, offset, base = match.groups()
-    new_offset = int(offset) + rng.choice([-4096, -2048, -64, 64, 2048, 4096])
+    deltas = mutation_cfg.get("offset_deltas", [-4096, -2048, -64, 64, 2048, 4096])
+    new_offset = int(offset) + rng.choice(deltas)
     instructions[index] = f"{opcode} {dst}, {new_offset}({base})"
 
 
 def _insert_delay(instructions: List[str], rng: random.Random) -> None:
     index = rng.randint(0, len(instructions))
     instructions.insert(index, rng.choice(["nop", "fence"]))
+
+
+def _rename_register(instructions: List[str], rng: random.Random) -> None:
+    if not instructions:
+        return
+    index = rng.randrange(len(instructions))
+    instruction = instructions[index]
+    registers = [reg for reg in REG_PATTERN.findall(instruction) if reg != "x0"]
+    if not registers:
+        return
+    old = rng.choice(registers)
+    candidates = [reg for reg in REGISTER_POOL if reg != old]
+    if not candidates:
+        return
+    new = rng.choice(candidates)
+    instructions[index] = re.sub(rf"\b{old}\b", new, instruction)
+
+
+def _mutate_branch_offset(
+    instructions: List[str], rng: random.Random, mutation_cfg: Dict[str, Any]
+) -> None:
+    if not instructions:
+        return
+    index = rng.randrange(len(instructions))
+    instruction = instructions[index]
+    deltas = mutation_cfg.get("branch_offset_deltas", [-32, -16, -8, -4, 4, 8, 16, 32])
+
+    match = BRANCH_PATTERN.search(instruction)
+    if match:
+        opcode, rs1, rs2, offset = match.groups()
+        new_offset = int(offset) + rng.choice(deltas)
+        instructions[index] = f"{opcode} {rs1}, {rs2}, {new_offset}"
+        return
+
+    match = JAL_PATTERN.search(instruction)
+    if match:
+        rd, offset = match.groups()
+        new_offset = int(offset) + rng.choice(deltas)
+        instructions[index] = f"jal {rd}, {new_offset}"
+        return
+
+    match = JALR_PATTERN.search(instruction)
+    if match:
+        rd, offset, rs1 = match.groups()
+        new_offset = int(offset) + rng.choice(deltas)
+        instructions[index] = f"jalr {rd}, {new_offset}({rs1})"
