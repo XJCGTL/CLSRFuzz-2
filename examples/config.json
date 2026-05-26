@@ -1,0 +1,47 @@
+{
+  "strategies": {
+    "load_storm": {
+      "load_count": 64,
+      "stride": 4096,
+      "loop_depth": 1
+    },
+    "mul_chain": {
+      "mul_chain_len": 256,
+      "loop_depth": 1
+    },
+    "mixed": {
+      "load_count": 32,
+      "stride": 4096,
+      "mul_chain_len": 128,
+      "loop_depth": 1,
+      "delay_nops": 2
+    }
+  },
+  "thresholds": {
+    "rob_full_cycles": 40,
+    "mshr_occupancy": 6,
+    "lsq_occupancy": 6,
+    "stall_cycles": 80
+  },
+  "mutation": {
+    "rename_prob": 0.15,
+    "branch_offset_mutate_prob": 0.15
+  },
+  "fuzzing": {
+    "corpus_max_size": 50,
+    "score_threshold": 0.0,
+    "keep_triggered": true
+  },
+  "limits": {
+    "rob_entries": 64,
+    "mshr_entries": 16,
+    "lsq_entries": 16
+  },
+  "heuristics": {
+    "mshr_load_divisor": 4,
+    "mshr_store_divisor": 8,
+    "lsq_divisor": 4,
+    "rob_mul_divisor": 8,
+    "rob_fence_divisor": 16
+  }
+}
