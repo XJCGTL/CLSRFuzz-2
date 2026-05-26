@@ -3,6 +3,7 @@ from __future__ import annotations
 import heapq
 import json
 import random
+from itertools import count
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -29,7 +30,8 @@ def fuzz(
     stats = {"iterations": iterations, "triggered": 0}
     run_dir = workdir / "runs"
     run_dir.mkdir(parents=True, exist_ok=True)
-    corpus = _init_corpus(seeds, config)
+    counter = count()
+    corpus = _init_corpus(seeds, config, counter)
 
     for iteration in range(iterations):
         base = _select_seed(corpus, rng)
@@ -58,7 +60,7 @@ def fuzz(
                 entry["testcase"] = mutated.to_dict()
             findings.append(entry)
         if _should_add_to_corpus(detail, triggered, config):
-            _add_to_corpus(corpus, mutated, detail.get("score", 0.0), config)
+            _add_to_corpus(corpus, mutated, detail.get("score", 0.0), config, counter)
         _write_iteration(iteration_dir, mutated, entry)
 
     stats["corpus_size"] = len(corpus)
@@ -75,11 +77,13 @@ def _write_iteration(path: Path, testcase: TestCase, entry: Dict[str, Any]) -> N
         json.dump(entry, handle, indent=2)
 
 
-def _init_corpus(seeds: List[TestCase], config: Dict[str, Any]) -> List[Dict[str, Any]]:
-    corpus: List[Dict[str, Any]] = []
+def _init_corpus(
+    seeds: List[TestCase], config: Dict[str, Any], counter: count
+) -> List[tuple[float, int, TestCase]]:
+    corpus: List[tuple[float, int, TestCase]] = []
     for seed in seeds:
         score = _heuristic_score(seed, config)
-        corpus.append({"testcase": seed, "score": score})
+        heapq.heappush(corpus, (score, next(counter), seed))
     return corpus
 
 
@@ -88,10 +92,10 @@ def _heuristic_score(testcase: TestCase, config: Dict[str, Any]) -> float:
     return float(detail.get("score", 0.0))
 
 
-def _select_seed(corpus: List[Dict[str, Any]], rng: random.Random) -> TestCase:
+def _select_seed(corpus: List[tuple[float, int, TestCase]], rng: random.Random) -> TestCase:
     if not corpus:
         raise ValueError("Empty fuzzing corpus")
-    return rng.choice(corpus)["testcase"]
+    return rng.choice(corpus)[2]
 
 
 def _should_add_to_corpus(
@@ -105,13 +109,20 @@ def _should_add_to_corpus(
 
 
 def _add_to_corpus(
-    corpus: List[Dict[str, Any]],
+    corpus: List[tuple[float, int, TestCase]],
     testcase: TestCase,
     score: float,
     config: Dict[str, Any],
+    counter: count,
 ) -> None:
-    corpus.append({"testcase": testcase, "score": score})
     fuzzing_cfg = config.get("fuzzing", {})
     max_size = int(fuzzing_cfg.get("corpus_max_size", 50))
-    if max_size > 0 and len(corpus) > max_size:
-        corpus[:] = heapq.nlargest(max_size, corpus, key=lambda entry: entry["score"])
+    entry = (score, next(counter), testcase)
+    if max_size <= 0:
+        heapq.heappush(corpus, entry)
+        return
+    if len(corpus) < max_size:
+        heapq.heappush(corpus, entry)
+        return
+    if score > corpus[0][0]:
+        heapq.heapreplace(corpus, entry)
