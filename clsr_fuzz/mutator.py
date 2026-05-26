@@ -105,10 +105,9 @@ def _rename_register(instructions: List[str], rng: random.Random) -> None:
     if not candidates:
         return
     new = rng.choice(candidates)
-    def replace(match: re.Match[str]) -> str:
-        return new if match.group(0) == old else match.group(0)
-
-    instructions[index] = REG_PATTERN.sub(replace, instruction)
+    instructions[index] = REG_PATTERN.sub(
+        lambda match: new if match.group(0) == old else match.group(0), instruction
+    )
 
 
 def _mutate_branch_offset(

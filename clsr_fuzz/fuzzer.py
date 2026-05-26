@@ -5,7 +5,7 @@ import json
 import random
 from itertools import count
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 from clsr_fuzz.evaluator import evaluate
 from clsr_fuzz.minimizer import minimize
@@ -78,7 +78,7 @@ def _write_iteration(path: Path, testcase: TestCase, entry: Dict[str, Any]) -> N
 
 
 def _init_corpus(
-    seeds: List[TestCase], config: Dict[str, Any], counter: count
+    seeds: List[TestCase], config: Dict[str, Any], counter: Iterator[int]
 ) -> List[tuple[float, int, TestCase]]:
     corpus: List[tuple[float, int, TestCase]] = []
     for seed in seeds:
@@ -113,7 +113,7 @@ def _add_to_corpus(
     testcase: TestCase,
     score: float,
     config: Dict[str, Any],
-    counter: count,
+    counter: Iterator[int],
 ) -> None:
     fuzzing_cfg = config.get("fuzzing", {})
     max_size = int(fuzzing_cfg.get("corpus_max_size", 50))
