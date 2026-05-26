@@ -6,7 +6,9 @@ from typing import Any, Dict, List
 
 from clsr_fuzz.testcase import TestCase
 
-LOAD_OFFSET_PATTERN = re.compile(r"(l[wd])\s+(x\d+),\s*([+-]?\d+)\((x\d+)\)")
+LOAD_OFFSET_PATTERN = re.compile(
+    r"(l(?:b|h|w|d|bu|hu|wu))\s+(x\d+),\s*([+-]?\d+)\((x\d+)\)"
+)
 REG_PATTERN = re.compile(r"\bx(?:[0-9]|[12][0-9]|3[01])\b")
 BRANCH_PATTERN = re.compile(
     r"\b(b(?:eq|ne|lt|ge|ltu|geu))\s+(x\d+),\s*(x\d+),\s*([+-]?\d+)\b"
@@ -103,7 +105,7 @@ def _rename_register(instructions: List[str], rng: random.Random) -> None:
     if not candidates:
         return
     new = rng.choice(candidates)
-    instructions[index] = re.sub(rf"\b{old}\b", new, instruction)
+    instructions[index] = re.sub(rf"\b{re.escape(old)}\b", new, instruction)
 
 
 def _mutate_branch_offset(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable
+from typing import Any, Dict, Iterable
 
 LOAD_OPCODES = {"lb", "lh", "lw", "ld", "lbu", "lhu", "lwu"}
 STORE_OPCODES = {"sb", "sh", "sw", "sd"}
@@ -21,3 +21,30 @@ def count_instruction_types(instructions: Iterable[str]) -> Dict[str, int]:
         elif opcode == "nop":
             counts["nop"] += 1
     return counts
+
+
+def estimate_metrics(
+    instructions: Iterable[str], limits: Dict[str, Any] | None = None
+) -> Dict[str, int]:
+    counts = count_instruction_types(instructions)
+    limits = limits or {}
+    mshr_limit = int(limits.get("mshr_entries", 16))
+    lsq_limit = int(limits.get("lsq_entries", 16))
+    rob_limit = int(limits.get("rob_entries", 64))
+
+    load_count = counts["load"]
+    store_count = counts["store"]
+    mul_count = counts["mul"]
+    fence_count = counts["fence"] + counts["nop"]
+
+    mshr_occupancy = min(mshr_limit, (load_count // 4) + (store_count // 8))
+    lsq_occupancy = min(lsq_limit, (load_count + store_count) // 4)
+    rob_full_cycles = min(rob_limit, (mul_count // 8) + (fence_count // 16))
+    stall_cycles = (load_count + store_count + mul_count) // 2
+
+    return {
+        "rob_full_cycles": rob_full_cycles,
+        "mshr_occupancy": mshr_occupancy,
+        "lsq_occupancy": lsq_occupancy,
+        "stall_cycles": stall_cycles,
+    }

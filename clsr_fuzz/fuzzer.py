@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import heapq
 import json
 import random
 from pathlib import Path
@@ -113,5 +114,4 @@ def _add_to_corpus(
     fuzzing_cfg = config.get("fuzzing", {})
     max_size = int(fuzzing_cfg.get("corpus_max_size", 50))
     if max_size > 0 and len(corpus) > max_size:
-        corpus.sort(key=lambda entry: entry["score"], reverse=True)
-        del corpus[max_size:]
+        corpus[:] = heapq.nlargest(max_size, corpus, key=lambda entry: entry["score"])
