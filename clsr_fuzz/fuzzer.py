@@ -95,7 +95,8 @@ def _heuristic_score(testcase: TestCase, config: Dict[str, Any]) -> float:
 def _select_seed(corpus: List[tuple[float, int, TestCase]], rng: random.Random) -> TestCase:
     if not corpus:
         raise ValueError("Empty fuzzing corpus")
-    return rng.choice(corpus)[2]
+    weights = [max(entry[0], 1.0) for entry in corpus]
+    return rng.choices(corpus, weights=weights, k=1)[0][2]
 
 
 def _should_add_to_corpus(

@@ -21,7 +21,8 @@ def main() -> None:
     instructions = testcase.get("instructions", [])
     config = load_config(args.config)
     limits = config.get("limits", {})
-    metrics = estimate_metrics(instructions, limits)
+    heuristics = config.get("heuristics", {})
+    metrics = estimate_metrics(instructions, limits, heuristics)
 
     if args.out:
         Path(args.out).write_text(json.dumps(metrics, indent=2), encoding="utf-8")

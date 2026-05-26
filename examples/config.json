@@ -36,5 +36,12 @@
     "rob_entries": 64,
     "mshr_entries": 16,
     "lsq_entries": 16
+  },
+  "heuristics": {
+    "mshr_load_divisor": 4,
+    "mshr_store_divisor": 8,
+    "lsq_divisor": 4,
+    "rob_mul_divisor": 8,
+    "rob_fence_divisor": 16
   }
 }

@@ -55,6 +55,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "stall_cycles": 0.5,
     },
     "limits": {"rob_entries": 64, "mshr_entries": 16, "lsq_entries": 16},
+    "heuristics": {
+        "mshr_load_divisor": 4,
+        "mshr_store_divisor": 8,
+        "lsq_divisor": 4,
+        "rob_mul_divisor": 8,
+        "rob_fence_divisor": 16,
+    },
     "fuzzing": {"corpus_max_size": 50, "score_threshold": 0.0, "keep_triggered": True},
 }
 

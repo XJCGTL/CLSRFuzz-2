@@ -24,10 +24,13 @@ def count_instruction_types(instructions: Iterable[str]) -> Dict[str, int]:
 
 
 def estimate_metrics(
-    instructions: Iterable[str], limits: Dict[str, Any] | None = None
+    instructions: Iterable[str],
+    limits: Dict[str, Any] | None = None,
+    heuristics: Dict[str, Any] | None = None,
 ) -> Dict[str, int]:
     counts = count_instruction_types(instructions)
     limits = limits or {}
+    heuristics = heuristics or {}
     mshr_limit = int(limits.get("mshr_entries", 16))
     lsq_limit = int(limits.get("lsq_entries", 16))
     rob_limit = int(limits.get("rob_entries", 64))
@@ -37,11 +40,11 @@ def estimate_metrics(
     mul_count = counts["mul"]
     fence_count = counts["fence"] + counts["nop"]
 
-    mshr_load_divisor = 4
-    mshr_store_divisor = 8
-    lsq_divisor = 4
-    rob_mul_divisor = 8
-    rob_fence_divisor = 16
+    mshr_load_divisor = int(heuristics.get("mshr_load_divisor", 4))
+    mshr_store_divisor = int(heuristics.get("mshr_store_divisor", 8))
+    lsq_divisor = int(heuristics.get("lsq_divisor", 4))
+    rob_mul_divisor = int(heuristics.get("rob_mul_divisor", 8))
+    rob_fence_divisor = int(heuristics.get("rob_fence_divisor", 16))
 
     mshr_occupancy = min(
         mshr_limit, (load_count // mshr_load_divisor) + (store_count // mshr_store_divisor)

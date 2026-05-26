@@ -34,4 +34,5 @@ def _coerce_metrics(metrics: Dict[str, Any], testcase: TestCase, config: Dict[st
         return metrics
 
     limits = config.get("limits", {})
-    return estimate_metrics(testcase.instructions, limits)
+    heuristics = config.get("heuristics", {})
+    return estimate_metrics(testcase.instructions, limits, heuristics)
