@@ -5,7 +5,7 @@ import json
 import random
 from itertools import count
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from clsr_fuzz.evaluator import evaluate
 from clsr_fuzz.minimizer import minimize
@@ -13,6 +13,7 @@ from clsr_fuzz.mutator import mutate
 from clsr_fuzz.simulator import run_simulation
 from clsr_fuzz.testcase import TestCase
 
+MIN_SELECTION_WEIGHT = 1.0
 
 def fuzz(
     seeds: List[TestCase],
@@ -79,8 +80,8 @@ def _write_iteration(path: Path, testcase: TestCase, entry: Dict[str, Any]) -> N
 
 def _init_corpus(
     seeds: List[TestCase], config: Dict[str, Any], counter: Iterator[int]
-) -> List[tuple[float, int, TestCase]]:
-    corpus: List[tuple[float, int, TestCase]] = []
+) -> List[Tuple[float, int, TestCase]]:
+    corpus: List[Tuple[float, int, TestCase]] = []
     for seed in seeds:
         score = _heuristic_score(seed, config)
         heapq.heappush(corpus, (score, next(counter), seed))
@@ -92,10 +93,12 @@ def _heuristic_score(testcase: TestCase, config: Dict[str, Any]) -> float:
     return float(detail.get("score", 0.0))
 
 
-def _select_seed(corpus: List[tuple[float, int, TestCase]], rng: random.Random) -> TestCase:
+def _select_seed(
+    corpus: List[Tuple[float, int, TestCase]], rng: random.Random
+) -> TestCase:
     if not corpus:
         raise ValueError("Empty fuzzing corpus")
-    weights = [max(entry[0], 1.0) for entry in corpus]
+    weights = [max(entry[0], MIN_SELECTION_WEIGHT) for entry in corpus]
     return rng.choices(corpus, weights=weights, k=1)[0][2]
 
 
@@ -110,7 +113,7 @@ def _should_add_to_corpus(
 
 
 def _add_to_corpus(
-    corpus: List[tuple[float, int, TestCase]],
+    corpus: List[Tuple[float, int, TestCase]],
     testcase: TestCase,
     score: float,
     config: Dict[str, Any],
