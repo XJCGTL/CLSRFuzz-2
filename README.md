@@ -1,23 +1,24 @@
-clsr_fuzz/（核心源码）
+**`clsr_fuzz/`（核心源码）**
 
-__init__.py：包版本信息。
-__main__.py：python -m clsr_fuzz 入口，转到 CLI。
-cli.py：命令行入口与子命令处理（scan/generate/fuzz/minimize）。
-config.py：默认配置与配置文件加载/合并。
-generator.py：按策略生成种子测试用例（指令序列与内存映射）。
-mutator.py：变异器（插入/删除/替换指令、偏移/分支变异、寄存器重命名等）。
-fuzzer.py：主 fuzz 循环（选择种子、变异、仿真、评估、收集语料与发现）。
-simulator.py：调用外部仿真命令并解析结果（文件/stdout）。
-evaluator.py：评估仿真指标是否触发争用，并打分。
-instruction_stats.py：指令统计与启发式指标估算（无仿真时用）。
-minimizer.py：最小化测试用例（删指令仍触发为止）。
-static_scan.py：RTL 静态扫描（按正则匹配资源结构信号/关键词）。
-testcase.py：测试用例数据结构（序列化/反序列化）。
-examples/（示例）
+- `__init__.py`：包版本信息。
+- `__main__.py`：`python -m clsr_fuzz` 入口，转到 CLI。
+- `cli.py`：命令行入口与子命令处理（scan/generate/fuzz/minimize）。
+- `config.py`：默认配置与配置文件加载/合并。
+- `generator.py`：按策略生成种子测试用例（指令序列与内存映射）。
+- `mutator.py`：变异器（插入/删除/替换指令、偏移/分支变异、寄存器重命名等）。
+- `fuzzer.py`：主 fuzz 循环（选择种子、变异、仿真、评估、收集语料与发现）。
+- `simulator.py`：调用外部仿真命令并解析结果（文件/stdout）。
+- `evaluator.py`：评估仿真指标是否触发争用，并打分。
+- `instruction_stats.py`：指令统计与启发式指标估算（无仿真时用）。
+- `minimizer.py`：最小化测试用例（删指令仍触发为止）。
+- `static_scan.py`：RTL 静态扫描（按正则匹配资源结构信号/关键词）。
+- `testcase.py`：测试用例数据结构（序列化/反序列化）。
 
-config.json：示例配置（策略、阈值、变异参数等）。
-seed.json：示例测试用例种子。
-sim_stub.py：示例“仿真器”脚本，用启发式估算指标并输出 JSON。
+**`examples/`（示例）**
+
+- `config.json`：示例配置（策略、阈值、变异参数等）。
+- `seed.json`：示例测试用例种子。
+- `sim_stub.py`：示例“仿真器”脚本，用启发式估算指标并输出 JSON。
 
 # CLSRFuzz
 # 执行摘要
